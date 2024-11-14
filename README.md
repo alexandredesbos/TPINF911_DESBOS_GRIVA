@@ -24,12 +24,21 @@ Pour calculer la distance, on a utilisé x2Chi-2
 Nous avons commencé par faire la reconnaissance d'un seul objet.
 En chossisant un background (touche 'b'), puis un objet de couleur (touche 'a'), on peut le reconnaitre dans le flux video (touche 'r')
 
-![alt reconnaissance d'un surligneur jaune](images/surligneur.png)
+<img src="images/3colorsRaw.png" style="display: block; margin: auto; width: 50%; height: auto;">
 
 # Mode reconnaissance de plusieurs objets
 
 Pour reconnaitre plusieurs objets, on a ajouté un tableau d'histogrammes pour reconnaître plusieurs objets.
 
-![alt reconnaissance de plusieurs objets](images/3colors.png) ![alt reconnaissance de plusieurs objets](images/3colorsRaw.png)
+<table>
+  <tr>
+    <td>Image sans reconnaissance</td>
+     <td>Reconnaissance activé</td>
+  </tr>
+  <tr>
+    <td><img src="images/3colorsRaw.png" width=auto height=auto></td>
+    <td><img src="images/3colors.png" width=auto height=auto></td>
+  </tr>
+ </table>
 
 
