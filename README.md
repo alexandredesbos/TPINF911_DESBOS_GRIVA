@@ -56,6 +56,15 @@ Pour reconnaitre plusieurs objets, on a ajouté un tableau d'histogrammes pour r
 
  Afin d'otimiser le programme, on a ajouté un seuil pour la distance entre les histogrammes. Si la distance est inférieure à ce seuil, on considère que l'objet n'est pas utiles à ajouter. Pour cela on a ajouté une trackbar pour ajuster le seuil.
 
-
+<table>
+  <tr>
+    <td>Trackbar pour ajuster le seuil</td>
+     <td>Retour du terminal</td>
+  </tr>
+  <tr>
+    <td><img src="images/Screenshot 2024-11-14 at 10.28.07 AM.png" width=auto height=auto></td>
+    <td><img src="images/Screenshot 2024-11-14 at 10.28.21 AM.png" width=auto height=auto></td>
+  </tr>
+ </table>
 
 
