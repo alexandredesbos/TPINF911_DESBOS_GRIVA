@@ -84,10 +84,9 @@ float minDistance(const ColorDistribution &h,
 
 // Fabrique une nouvelle image, où chaque bloc est coloré selon qu'il est "fond" ou "objet".
 Mat recoObject(Mat input,
-               const std::vector<ColorDistribution> &col_hists,        /*< les distributions de couleurs du fond */
-               const std::vector<ColorDistribution> &col_hists_object, /*< les distributions de couleurs de l'objet */
-               const std::vector<Vec3b> &colors,                       /*< les couleurs pour fond/objet */
-               const int bloc /*< taille de chaque bloc, 16 si 16x16 */)
+               const std::vector<std::vector<ColorDistribution>> &all_col_hists,
+               const std::vector<Vec3b> &colors,
+               const int bloc)
 {
   Mat output = input.clone();
   for (int y = 0; y <= input.rows - bloc; y += bloc)
@@ -97,19 +96,28 @@ Mat recoObject(Mat input,
       // Histogramme de la couleur du bloc actuel
       ColorDistribution cd = getColorDistribution(input, Point(x, y), Point(x + bloc, y + bloc));
 
-      // Trouver la distance minimale avec les histogrammes du fond et de l'objet
-      float minDistBackground = minDistance(cd, col_hists);
-      float minDistObject = minDistance(cd, col_hists_object);
+      // Détermination de la distance minimale parmi toutes les catégories (fond + objets)
+      float minDist = std::numeric_limits<float>::max();
+      int closestCategory = 0; // 0 pour le fond, 1 pour le premier objet...
 
-      // Choisir la couleur du bloc selon la distance minimale (fond ou objet)
-      Vec3b color = (minDistBackground <= minDistObject) ? colors[0] : colors[1];
-
-      // Colorer le bloc
-      for (int i = y; i < y + bloc; ++i)
+      for (int i = 0; i < all_col_hists.size(); ++i)
       {
-        for (int j = x; j < x + bloc; ++j)
+        float dist = minDistance(cd, all_col_hists[i]);
+        if (dist < minDist)
         {
-          output.at<Vec3b>(i, j) = color;
+          minDist = dist;
+          closestCategory = i;
+        }
+      }
+
+      // Coloration du bloc
+      Vec3b color = colors[closestCategory];
+
+      for (int i = 0; i < bloc; ++i)
+      {
+        for (int j = 0; j < bloc; ++j)
+        {
+          output.at<Vec3b>(y + i, x + j) = color;
         }
       }
     }
@@ -117,8 +125,9 @@ Mat recoObject(Mat input,
   return output;
 }
 
-std::vector<ColorDistribution> col_hists;        // histogrammes du fond
-std::vector<ColorDistribution> col_hists_object; // histogrammes de l'objet
+std::vector<ColorDistribution> col_hists;                  // histogrammes du fond
+std::vector<ColorDistribution> col_hists_object;           // histogrammes de l'objet
+std::vector<std::vector<ColorDistribution>> all_col_hists; // tableau de tableau d'histogrammes
 
 int main(int argc, char **argv)
 {
@@ -169,7 +178,7 @@ int main(int argc, char **argv)
       float dist = cd_left.distance(cd_right);
       cout << "Distance chi-2 entre les deux distributions de couleur: " << dist << endl;
     }
-    if (c == 'b')
+    if (c == 'b') // Touche pour ajouter un fond
     {
       col_hists.clear(); // vide l'histogramme précédent
       for (int y = 0; y <= height - bbloc; y += bbloc)
@@ -180,21 +189,33 @@ int main(int argc, char **argv)
           col_hists.push_back(cd);
         }
       }
+      if (all_col_hists.empty())
+      {
+        all_col_hists.push_back(col_hists);
+      }
+      else
+      {
+        all_col_hists[0] = col_hists;
+      }
+
       cout << "Histogrammes du fond calculés" << endl;
     }
-    if (c == 'a')
+    if (c == 'a' && !col_hists.empty()) // Touche pour ajouter un objet
     {
+      col_hists_object.clear(); // vide l'histogramme précédent
       ColorDistribution cd = getColorDistribution(img_input, pt1, pt2);
       col_hists_object.push_back(cd);
-      cout << "Histogramme de l'objet ajouté" << endl;
+      all_col_hists.push_back(col_hists_object);
+      cout << "Nouvel objet ajouté. Nombre total d'objets : " << all_col_hists.size() << endl;
     }
     Mat output = img_input;
     if (reco)
     {
-      const std::vector<Vec3b> colors = {Vec3b(0, 0, 0), Vec3b(0, 0, 255)}; // noir pour fond et rouge pour objet
+      const std::vector<Vec3b> colors = {Vec3b(0, 0, 0), Vec3b(0, 0, 255), Vec3b(0, 255, 0), Vec3b(255, 0, 0), Vec3b(0, 255, 255)};
+
       Mat gray;
       cvtColor(img_input, gray, COLOR_BGR2GRAY);
-      Mat reco = recoObject(img_input, col_hists, col_hists_object, colors, 16); // Taille de bloc = 16x16
+      Mat reco = recoObject(img_input, all_col_hists, colors, 16);
       cvtColor(gray, img_input, COLOR_GRAY2BGR);
       output = 0.5 * reco + 0.5 * img_input; // mélange reco + caméra
     }
