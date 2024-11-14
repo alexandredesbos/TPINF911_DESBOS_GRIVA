@@ -5,10 +5,10 @@ Pour compiler:
     mkdir build
     cd build
     cmake -DCMAKE_BUILD_TYPE=Release ..
+    make
 
 Pour exécuter:
 
-    make
     ./main
 
 ## Compte rendu
@@ -32,8 +32,8 @@ En chossisant un background (touche 'b'), puis un objet de couleur (touche 'a'),
      <td>Reconnaissance de la peau</td>
   </tr>
   <tr>
-    <img src="images/surligneur.png" style="display: block; margin: auto; width: auto; height: auto;"> 
-    <img src="images/peau.png" style="display: block; margin: auto; width: auto; height: auto;">
+    <td><img src="images/surligneur.png" width=auto height=auto></td>
+    <td><img src="images/peau.png" width=auto height=auto></td>
   </tr>
  </table>
 
