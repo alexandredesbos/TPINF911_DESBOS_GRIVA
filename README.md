@@ -11,9 +11,11 @@ Pour exécuter:
 
     ./main
 
-## Compte rendu
 
-Pour calculer la distance, on a utilisé x2Chi-2 
+
+# Compte rendu
+
+Pour calculer la distance, on a utilisé x2Chi-2 comme ci-dessous:
 
     for (int i = 0; i < 8; i++)
       for (int j = 0; j < 8; j++)
@@ -21,7 +23,7 @@ Pour calculer la distance, on a utilisé x2Chi-2
           if (data[i][j][k] + other.data[i][j][k] > 0)
             dist += (pow((data[i][j][k] - other.data[i][j][k]), 2)) / (data[i][j][k] + other.data[i][j][k]);
 
-# Mode reconnaissance objet
+## Mode reconnaissance objet
 
 Nous avons commencé par faire la reconnaissance d'un seul objet.
 En chossisant un background (touche 'b'), puis un objet de couleur (touche 'a'), on peut le reconnaitre dans le flux video (touche 'r')
@@ -37,7 +39,7 @@ En chossisant un background (touche 'b'), puis un objet de couleur (touche 'a'),
   </tr>
  </table>
 
-# Mode reconnaissance de plusieurs objets
+## Mode reconnaissance de plusieurs objets
 
 Pour reconnaitre plusieurs objets, on a ajouté un tableau d'histogrammes pour reconnaître plusieurs objets.
 
@@ -54,6 +56,8 @@ Pour reconnaitre plusieurs objets, on a ajouté un tableau d'histogrammes pour r
 
  ## Optimisation
 
+ ### Seuil
+
  Afin d'otimiser le programme, on a ajouté un seuil pour la distance entre les histogrammes. Si la distance est inférieure à ce seuil, on considère que l'objet n'est pas utiles à ajouter. Pour cela on a ajouté une trackbar pour ajuster le seuil.
 
 <table>
@@ -64,6 +68,22 @@ Pour reconnaitre plusieurs objets, on a ajouté un tableau d'histogrammes pour r
   <tr>
     <td><img src="images/Screenshot 2024-11-14 at 10.28.07 AM.png" width=auto height=auto></td>
     <td><img src="images/Screenshot 2024-11-14 at 10.28.21 AM.png" width=auto height=auto></td>
+  </tr>
+ </table>
+
+### relaxation des labels 
+
+Afin d'avoir une meilleurs analyse des couleurs, on à applique une relaxaion des labels trouvé en utilisant un voisinnage 3x3. 
+Cela permet de lisser les résultats en changant les labels des pixels qui ne sont pas dans la majorité des voisins.
+
+<table>
+  <tr>
+    <td>Image sans relaxation</td>
+     <td>Image avec relaxation</td>
+  </tr>
+  <tr>
+    <td><img src="images/avant.png" width=auto height=auto></td>
+    <td><img src="images/apres.png" width=auto height=auto></td>
   </tr>
  </table>
 
