@@ -24,10 +24,16 @@ Pour calculer la distance, on a utilisé x2Chi-2
 Nous avons commencé par faire la reconnaissance d'un seul objet.
 En chossisant un background (touche 'b'), puis un objet de couleur (touche 'a'), on peut le reconnaitre dans le flux video (touche 'r')
 
-<div style="display: flex; justify-content: center;">
-    <img src="images/surligneur.png" style="display: block; margin: auto; width: 50%; height: auto;"> 
-    <img src="images/peau.png" style="display: block; margin: auto; width: 50%; height: auto;">
-</div>
+<table>
+  <tr>
+    <td>Reconnaissance d'un surligneur jaune</td>
+     <td>Reconnaissance de la peau</td>
+  </tr>
+  <tr>
+    <img src="images/surligneur.png" style="display: block; margin: auto; width: auto; height: auto;"> 
+    <img src="images/peau.png" style="display: block; margin: auto; width: auto; height: auto;">
+  </tr>
+ </table>
 
 # Mode reconnaissance de plusieurs objets
 
@@ -43,5 +49,11 @@ Pour reconnaitre plusieurs objets, on a ajouté un tableau d'histogrammes pour r
     <td><img src="images/3colors.png" width=auto height=auto></td>
   </tr>
  </table>
+
+ ## Optimisation
+
+ Afin d'otimiser le programme, on a ajouté un seuil pour la distance entre les histogrammes. Si la distance est inférieure à ce seuil, on considère que l'objet n'est pas utiles à ajouter. Pour cela on a ajouté une trackbar pour ajuster le seuil.
+
+ 
 
 
