@@ -30,6 +30,6 @@ En chossisant un background (touche 'b'), puis un objet de couleur (touche 'a'),
 
 Pour reconnaitre plusieurs objets, on a ajouté un tableau d'histogrammes pour reconnaître plusieurs objets.
 
-![alt reconnaissance de plusieurs objets](images/3colors.png) | ![alt reconnaissance de plusieurs objets](images/3colorsRaw.png)
+![alt reconnaissance de plusieurs objets](images/3colors.png) ![alt reconnaissance de plusieurs objets](images/3colorsRaw.png)
 
 
