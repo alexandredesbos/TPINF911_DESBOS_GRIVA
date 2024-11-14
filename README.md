@@ -24,7 +24,7 @@ Pour calculer la distance, on a utilisé x2Chi-2
 Nous avons commencé par faire la reconnaissance d'un seul objet.
 En chossisant un background (touche 'b'), puis un objet de couleur (touche 'a'), on peut le reconnaitre dans le flux video (touche 'r')
 
-<div class="row">
+<div style="display: flex; justify-content: center;">
     <img src="images/surligneur.png" style="display: block; margin: auto; width: 50%; height: auto;"> 
     <img src="images/peau.png" style="display: block; margin: auto; width: 50%; height: auto;">
 </div>
