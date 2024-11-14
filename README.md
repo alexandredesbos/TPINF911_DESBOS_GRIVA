@@ -41,7 +41,7 @@ En chossisant un background (touche 'b'), puis un objet de couleur (touche 'a'),
 
 ## Mode reconnaissance de plusieurs objets
 
-Pour reconnaitre plusieurs objets, on a ajouté un tableau d'histogrammes pour reconnaître plusieurs objets.
+Pour reconnaitre plusieurs objets, on a ajouté un tableau d'histogrammes qui stocke les différents histogrammes des objets reconnus.
 
 <table>
   <tr>
