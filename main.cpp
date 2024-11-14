@@ -5,6 +5,7 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
+#include <map>
 
 using namespace cv;
 using namespace std;
@@ -125,6 +126,49 @@ Mat recoObject(Mat input,
   return output;
 }
 
+Mat relaxLabels(const Mat &labels, int bloc)
+{
+  // On créer une copie de l'image
+  Mat relaxedLabels = labels.clone();
+
+  // On parcourt l'image
+  for (int y = 1; y < labels.rows - 1; ++y)
+  {
+    for (int x = 1; x < labels.cols - 1; ++x)
+    {
+      std::map<int, int> labelCounts;
+      for (int dy = -1; dy <= 1; ++dy)
+      {
+        for (int dx = -1; dx <= 1; ++dx)
+        {
+          if (dx == 0 && dy == 0)
+            continue;
+          int neighborLabel = labels.at<Vec3b>(y + dy, x + dx)[0]; // On récupère le label du voisin
+          labelCounts[neighborLabel]++;
+        }
+      }
+      // Détermine le label le plus fréquent
+      int currentLabel = labels.at<Vec3b>(y, x)[0]; // Label actuel du bloc central
+      int mostFrequentLabel = currentLabel;
+      int maxCount = 0;
+      for (const auto &labelCount : labelCounts)
+      {
+        if (labelCount.second > maxCount)
+        {
+          mostFrequentLabel = labelCount.first;
+          maxCount = labelCount.second;
+        }
+      }
+      // On applique le label le plus fréquent si différent du label actuel
+      if (mostFrequentLabel != currentLabel && maxCount > 4)
+      {
+        relaxedLabels.at<Vec3b>(y, x)[0] = mostFrequentLabel;
+      }
+    }
+  }
+  return relaxedLabels;
+}
+
 std::vector<ColorDistribution> col_hists;                  // histogrammes du fond
 std::vector<ColorDistribution> col_hists_object;           // histogrammes de l'objet
 std::vector<std::vector<ColorDistribution>> all_col_hists; // tableau de tableau d'histogrammes
@@ -240,8 +284,12 @@ int main(int argc, char **argv)
       Mat gray;
       cvtColor(img_input, gray, COLOR_BGR2GRAY);
       Mat reco = recoObject(img_input, all_col_hists, colors, 16);
+
+      // On applique la relaxation des labels
+      Mat relaxedReco = relaxLabels(reco, 16);
+
       cvtColor(gray, img_input, COLOR_GRAY2BGR);
-      output = 0.5 * reco + 0.5 * img_input; // mélange reco + caméra
+      output = 0.5 * relaxedReco + 0.5 * img_input; // mélange reco + caméra
     }
     else
     {
