@@ -11,8 +11,6 @@ Pour exécuter:
 
     ./main
 
-
-
 # Compte rendu
 
 Pour calculer la distance, on a utilisé x2Chi-2 comme ci-dessous:
@@ -54,11 +52,11 @@ Pour reconnaitre plusieurs objets, on a ajouté un tableau d'histogrammes qui st
   </tr>
  </table>
 
- ## Optimisation
+## Optimisation
 
- ### Seuil
+### Seuil
 
- Afin d'otimiser le programme, on a ajouté un seuil pour la distance entre les histogrammes. Si la distance est inférieure à ce seuil, on considère que l'objet n'est pas utiles à ajouter. Pour cela on a ajouté une trackbar pour ajuster le seuil.
+Afin d'otimiser le programme, on a ajouté un seuil pour la distance entre les histogrammes. Si la distance est inférieure à ce seuil, on considère que l'objet n'est pas utiles à ajouter. Pour cela on a ajouté une trackbar pour ajuster le seuil.
 
 <table>
   <tr>
@@ -71,10 +69,10 @@ Pour reconnaitre plusieurs objets, on a ajouté un tableau d'histogrammes qui st
   </tr>
  </table>
 
-### relaxation des labels 
+### relaxation des labels
 
-Afin d'avoir une meilleurs analyse des couleurs, on à applique une relaxaion des labels trouvé en utilisant un voisinnage 3x3. 
-Cela permet de lisser les résultats en changant les labels des pixels qui ne sont pas dans la majorité des voisins.
+Afin d'avoir une meilleure analyse des couleurs, on à appliqué une relaxaion des labels trouvés en utilisant un voisinnage 3x3.
+Cela permet de lisser les résultats en changeant les labels des pixels qui ne sont pas dans la majorité des voisins.
 
 <table>
   <tr>
@@ -86,5 +84,3 @@ Cela permet de lisser les résultats en changant les labels des pixels qui ne so
     <td><img src="images/apres.png" width=auto height=auto></td>
   </tr>
  </table>
-
-

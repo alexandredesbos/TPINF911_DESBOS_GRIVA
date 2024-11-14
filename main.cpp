@@ -45,7 +45,7 @@ struct ColorDistribution
           data[i][j][k] /= nb;
   }
 
-  // Retourne la distance entre cet histogramme et l'histogramme other
+  // Retourne la distance entre l'histogramme courant et un autre
   float distance(const ColorDistribution &other) const
   {
     float dist = 0;
@@ -69,7 +69,7 @@ getColorDistribution(Mat input, Point pt1, Point pt2)
   return cd;
 }
 
-// Retourne la plus petite distance entre h et les histogrammes de couleurs de hists
+// Retourne la plus petite distance entre h et les histogrammes de couleurs "hists"
 float minDistance(const ColorDistribution &h,
                   const std::vector<ColorDistribution> &hists)
 {
@@ -97,9 +97,9 @@ Mat recoObject(Mat input,
       // Histogramme de la couleur du bloc actuel
       ColorDistribution cd = getColorDistribution(input, Point(x, y), Point(x + bloc, y + bloc));
 
-      // Détermination de la distance minimale parmi toutes les catégories (fond + objets)
+      // On determine la distance minimale parmi toutes les catégories (fond + objets)
       float minDist = std::numeric_limits<float>::max();
-      int closestCategory = 0; // 0 pour le fond, 1 pour le premier objet...
+      int closestCategory = 0; // On défini 0 pour le fond, 1 pour le premier objet...
 
       for (int i = 0; i < all_col_hists.size(); ++i)
       {
@@ -111,7 +111,7 @@ Mat recoObject(Mat input,
         }
       }
 
-      // Coloration du bloc
+      // On colore le bloc courant selon la catégorie la plus proche
       Vec3b color = colors[closestCategory];
 
       for (int i = 0; i < bloc; ++i)
@@ -147,7 +147,7 @@ Mat relaxLabels(const Mat &labels, int bloc)
           labelCounts[neighborLabel]++;
         }
       }
-      // Détermine le label le plus fréquent
+      // On détermine le label le plus fréquent
       int currentLabel = labels.at<Vec3b>(y, x)[0]; // Label actuel du bloc central
       int mostFrequentLabel = currentLabel;
       int maxCount = 0;
@@ -270,7 +270,7 @@ int main(int argc, char **argv)
       }
       if (add == true)
       {
-        col_hists_object.clear(); // vide l'histogramme précédent
+        col_hists_object.clear(); // On vide l'histogramme précédent
         col_hists_object.push_back(cd);
         all_col_hists.push_back(col_hists_object);
         cout << "Nouvel objet ajouté. Nombre total d'objets : " << all_col_hists.size() << endl;
