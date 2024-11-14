@@ -128,6 +128,12 @@ Mat recoObject(Mat input,
 std::vector<ColorDistribution> col_hists;                  // histogrammes du fond
 std::vector<ColorDistribution> col_hists_object;           // histogrammes de l'objet
 std::vector<std::vector<ColorDistribution>> all_col_hists; // tableau de tableau d'histogrammes
+float distanceThreshold = 0.05f;
+
+void onTrackbarChange(int value, void *)
+{
+  distanceThreshold = value / 100.0f;
+}
 
 int main(int argc, char **argv)
 {
@@ -153,6 +159,7 @@ int main(int argc, char **argv)
   Point pt1(width / 2 - size / 2, height / 2 - size / 2);
   Point pt2(width / 2 + size / 2, height / 2 + size / 2);
   namedWindow("input", 1);
+  createTrackbar("Seuil", "input", nullptr, 100, onTrackbarChange);
   imshow("input", img_input);
   bool freeze = false;
   bool reco = false;
@@ -192,21 +199,38 @@ int main(int argc, char **argv)
       if (all_col_hists.empty())
       {
         all_col_hists.push_back(col_hists);
+        cout << "Fond ajouté." << endl;
       }
       else
       {
         all_col_hists[0] = col_hists;
+        cout << "Fond remplacé." << endl;
       }
 
       cout << "Histogrammes du fond calculés" << endl;
     }
     if (c == 'a' && !col_hists.empty()) // Touche pour ajouter un objet
     {
-      col_hists_object.clear(); // vide l'histogramme précédent
+      bool add = true;
       ColorDistribution cd = getColorDistribution(img_input, pt1, pt2);
-      col_hists_object.push_back(cd);
-      all_col_hists.push_back(col_hists_object);
-      cout << "Nouvel objet ajouté. Nombre total d'objets : " << all_col_hists.size() << endl;
+      for (const auto &histList : all_col_hists)
+      {
+        for (const auto &h : histList)
+        {
+          if (cd.distance(h) < distanceThreshold)
+          {
+            cout << "L'histogramme est trop proche d'un objet existant ." << endl;
+            add = false;
+          }
+        }
+      }
+      if (add == true)
+      {
+        col_hists_object.clear(); // vide l'histogramme précédent
+        col_hists_object.push_back(cd);
+        all_col_hists.push_back(col_hists_object);
+        cout << "Nouvel objet ajouté. Nombre total d'objets : " << all_col_hists.size() << endl;
+      }
     }
     Mat output = img_input;
     if (reco)
