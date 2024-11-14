@@ -1,13 +1,15 @@
 # TPINF911_DESBOS_GRIVA
 
-Pour compiler et executer:
+Pour compiler:
 
-    $ mkdir build
-    $ cd build
-    $ cmake -DCMAKE_BUILD_TYPE=Release ..
+    mkdir build
+    cd build
+    cmake -DCMAKE_BUILD_TYPE=Release ..
 
-    $ make
-    $ ./main
+Pour exécuter:
+
+    make
+    ./main
 
 ## Compte rendu
 
@@ -54,6 +56,6 @@ Pour reconnaitre plusieurs objets, on a ajouté un tableau d'histogrammes pour r
 
  Afin d'otimiser le programme, on a ajouté un seuil pour la distance entre les histogrammes. Si la distance est inférieure à ce seuil, on considère que l'objet n'est pas utiles à ajouter. Pour cela on a ajouté une trackbar pour ajuster le seuil.
 
- 
+
 
 
