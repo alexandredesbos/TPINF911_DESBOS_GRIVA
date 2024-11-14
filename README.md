@@ -71,7 +71,7 @@ Afin d'otimiser le programme, on a ajouté un seuil pour la distance entre les h
 
 ### relaxation des labels
 
-Afin d'avoir une meilleure analyse des couleurs, on à appliqué une relaxaion des labels trouvés en utilisant un voisinnage 3x3.
+Afin d'avoir une meilleure analyse des couleurs, on a appliqué une relaxation des labels trouvés en utilisant un voisinnage 3x3.
 Cela permet de lisser les résultats en changeant les labels des pixels qui ne sont pas dans la majorité des voisins.
 
 <table>
