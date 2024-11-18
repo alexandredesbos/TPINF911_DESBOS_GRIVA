@@ -131,36 +131,6 @@ float minDistance(const ColorDistribution &h,
   return minDist;
 }
 
-// Fonction pour calculer la distance de Battacharrya
-double distanceBattacharrya(const cv::Mat &m1, const cv::Mat &p1, const cv::Mat &m2, const cv::Mat &p2)
-{
-  // On a m1 et m2 les moyennes et p1 et p2 les matrices de covariance des deux distributions
-
-  cv::Mat meanDiff = m1 - m2;
-  cv::Mat covarSum = p1 + p2;
-
-  cv::Mat invCovarSum;
-  double detCovarSum = cv::determinant(covarSum);
-  // On vérifie que la matrice est inversible
-  if (cv::invert(covarSum, invCovarSum) == 0)
-  {
-    return std::numeric_limits<double>::max();
-  }
-
-  cv::Mat term = meanDiff.t() * invCovarSum * meanDiff;
-  double value1 = 0.125 * term.at<double>(0, 0);
-  double value2 = 0.5 * cv::log(detCovarSum / (cv::determinant(p1) * cv::determinant(p2)));
-
-  return value1 + value2;
-}
-
-// Fonction pour tranformer un histogramme en une distribution multivariée
-void histogramToMultivarie(const cv::Mat &histogram, cv::Mat &m, cv::Mat &p)
-{
-  cv::calcCovarMatrix(histogram, p, m, cv::COVAR_NORMAL | cv::COVAR_ROWS, CV_64F);
-  p = p / histogram.rows;
-}
-
 // Fabrique une nouvelle image, où chaque bloc est coloré selon qu'il est "fond" ou "objet".
 Mat recoObject(Mat input,
                const std::vector<std::vector<ColorDistribution>> &all_col_hists,
@@ -175,31 +145,17 @@ Mat recoObject(Mat input,
       // Histogramme de la couleur du bloc actuel
       ColorDistribution cd = getColorDistribution(input, Point(x, y), Point(x + bloc, y + bloc));
 
-      // On transforme l'histogramme en distribution multivariée
-      cv::Mat m, p;
-      cv::Mat hist(1, 512, CV_64F, &cd.data);
-      histogramToMultivarie(hist, m, p);
-
       // On determine la distance minimale parmi toutes les catégories (fond + objets)
       float minDist = std::numeric_limits<float>::max();
       int closestCategory = 0; // On défini 0 pour le fond, 1 pour le premier objet...
 
       for (int i = 0; i < all_col_hists.size(); ++i)
       {
-        for (const auto &ref_cd : all_col_hists[i])
+        float dist = minDistance(cd, all_col_hists[i]);
+        if (dist < minDist)
         {
-          // On transforme l'histogramme en distribution multivariée
-          cv::Mat m2, p2;
-          cv::Mat hist(1, 512, CV_64F, &cd.data);
-          histogramToMultivarie(hist, m2, p2);
-
-          // On calcule la distance de Battacharrya
-          float dist = distanceBattacharrya(m, p, m2, p2);
-          if (dist < minDist)
-          {
-            minDist = dist;
-            closestCategory = i;
-          }
+          minDist = dist;
+          closestCategory = i;
         }
       }
 
@@ -259,6 +215,59 @@ Mat relaxLabels(const Mat &labels, int bloc)
     }
   }
   return relaxedLabels;
+}
+
+// Fonction pour calculer la distance de Battacharrya
+double distanceBhattacharyya(const cv::Mat &m1, const cv::Mat &p1, const cv::Mat &m2, const cv::Mat &p2)
+{
+  // On a m1 et m2 les moyennes et p1 et p2 les matrices de covariance des deux distributions
+
+  cv::Mat meanDiff = m1 - m2;
+  cv::Mat covarSum = p1 + p2;
+
+  cv::Mat invCovarSum;
+  double detCovarSum = cv::determinant(covarSum);
+  // On vérifie que la matrice est inversible
+  if (cv::invert(covarSum, invCovarSum) == 0)
+  {
+    return std::numeric_limits<double>::max();
+  }
+
+  cv::Mat term = meanDiff.t() * invCovarSum * meanDiff;
+  double value1 = 0.125 * term.at<double>(0, 0);
+  double value2 = 0.5 * cv::log(detCovarSum / (cv::determinant(p1) * cv::determinant(p2)));
+
+  return value1 + value2;
+}
+
+// Fonction pour tranformer un histogramme en une distribution multivariée
+void histogramToMultivarie(const cv::Mat &histogram, cv::Mat &m, cv::Mat &p)
+{
+  cv::calcCovarMatrix(histogram, p, m, cv::COVAR_NORMAL | cv::COVAR_ROWS, CV_64F);
+  p = p / histogram.rows;
+}
+
+// Fonction recoObject améliorée avec la distance de Battacharrya
+Mat recoObjectBattacharyya(Mat input,
+                           const std::vector<std::vector<ColorDistribution>> &all_col_hists,
+                           const std::vector<Vec3b> &colors,
+                           const int bloc)
+{
+  Mat output = input.clone();
+  for (int y = 0; y <= input.rows - bloc; y += bloc)
+  {
+    for (int x = 0; x <= input.cols - bloc; x += bloc)
+    {
+      // Histogramme de la couleur du bloc actuel
+      ColorDistribution cd = getColorDistribution(input, Point(x, y), Point(x + bloc, y + bloc));
+
+      // On transforme l'histogramme en distribution multivariée
+      cv::Mat hist(1, 512, CV_64F, cd.data);
+      cv::Mat m, p;
+      histogramToMultivarie(hist, m, p);
+    }
+  }
+  return output;
 }
 
 std::vector<ColorDistribution> col_hists;                  // histogrammes du fond
@@ -392,6 +401,7 @@ int main(int argc, char **argv)
         cd.saveToFile("objet_distribution_" + std::to_string(nbFiles) + ".txt");
       }
     }
+
     Mat output = img_input;
     if (reco)
     {
