@@ -5,6 +5,7 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
+#include <opencv2/opencv.hpp>
 #include <map>
 #include <fstream>
 #include <cmath>
@@ -280,6 +281,63 @@ void onTrackbarChange(int value, void *)
   distanceThreshold = value / 100.0f;
 }
 
+Mat generateWatershedMarkers(const Mat &input, const std::vector<std::vector<ColorDistribution>> &all_col_hists, const std::vector<Vec3b> &colors, const int bloc)
+{
+  Mat markers(input.size(), CV_32S, Scalar::all(0)); // Matrice de marqueurs pour l'algorithme de watershed
+  int label = 1;
+
+  for (int y = 0; y <= input.rows - bloc; y += bloc)
+  {
+    for (int x = 0; x <= input.cols - bloc; x += bloc)
+    {
+      // Histogramme de la couleur du bloc actuel
+      ColorDistribution cd = getColorDistribution(input, Point(x, y), Point(x + bloc, y + bloc));
+
+      // Catégorie la plus proche
+      float minDist = std::numeric_limits<float>::max();
+      int closestCategory = 0;
+
+      for (int i = 0; i < all_col_hists.size(); ++i)
+      {
+        float dist = minDistance(cd, all_col_hists[i]);
+        if (dist < minDist)
+        {
+          minDist = dist;
+          closestCategory = i;
+        }
+      }
+
+      // Marquer la zone si elle est un objet (pas un bloc de fond)
+      if (closestCategory != 0)
+      {
+        // Marquer tous les pixels du bloc avec le même label
+        for (int i = y; i < y + bloc && i < markers.rows; ++i)
+        {
+          for (int j = x; j < x + bloc && j < markers.cols; ++j)
+          {
+            markers.at<int>(i, j) = label;
+          }
+        }
+        label++;
+      }
+    }
+  }
+
+  // Étiqueter le fond comme -1
+  for (int y = 0; y < markers.rows; ++y)
+  {
+    for (int x = 0; x < markers.cols; ++x)
+    {
+      if (markers.at<int>(y, x) == 0)
+      {
+        markers.at<int>(y, x) = -1;
+      }
+    }
+  }
+
+  return markers;
+}
+
 int main(int argc, char **argv)
 {
   Mat img_input, img_seg, img_d_bgr, img_d_hsv, img_d_lab;
@@ -402,6 +460,38 @@ int main(int argc, char **argv)
       }
     }
 
+    if (c == 'w' && !all_col_hists.empty())
+    {
+      const std::vector<Vec3b> colors = {Vec3b(0, 0, 0), Vec3b(0, 0, 255), Vec3b(0, 255, 0), Vec3b(255, 0, 0), Vec3b(0, 255, 255)};
+      Mat markers = generateWatershedMarkers(img_input, all_col_hists, colors, 16);
+      cout << "Marqueurs Watershed générés." << endl;
+
+      watershed(img_input, markers);
+
+      Mat markersVis;
+      markers.convertTo(markersVis, CV_8U);
+      imshow("Markers", markersVis);
+    }
+
+    // On calcul les valeurs moyennes des histogrammes pour vérifier que tout est correct
+    if (c == 'm')
+    {
+      for (int i = 0; i < all_col_hists.size(); ++i)
+      {
+        float sum = 0;
+        for (int j = 0; j < 8; ++j)
+        {
+          for (int k = 0; k < 8; ++k)
+          {
+            for (int l = 0; l < 8; ++l)
+            {
+              sum += all_col_hists[i][0].data[j][k][l];
+            }
+          }
+        }
+        cout << "Moyenne de l'histogramme " << i << " : " << sum / 512 << endl;
+      }
+    }
     Mat output = img_input;
     if (reco)
     {
