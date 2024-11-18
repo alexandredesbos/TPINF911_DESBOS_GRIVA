@@ -6,6 +6,7 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
 #include <map>
+#include <fstream>
 #include <cmath>
 
 using namespace cv;
@@ -56,6 +57,52 @@ struct ColorDistribution
           if (data[i][j][k] + other.data[i][j][k] > 0)
             dist += (pow((data[i][j][k] - other.data[i][j][k]), 2)) / (data[i][j][k] + other.data[i][j][k]);
     return dist;
+  }
+
+  void saveToFile(const std::string &filename) const
+  {
+    std::ofstream outFile("saveDistrib/" + filename);
+    if (!outFile)
+    {
+      std::cerr << "Erreur lors de l'ouverture du fichier pour la sauvegarde: " << filename << std::endl;
+      return;
+    }
+    outFile << nb << "\n";
+    for (int i = 0; i < 8; ++i)
+    {
+      for (int j = 0; j < 8; ++j)
+      {
+        for (int k = 0; k < 8; ++k)
+        {
+          outFile << data[i][j][k] << " ";
+        }
+        outFile << "\n";
+      }
+    }
+    std::cout << "Histogramme sauvegardé dans le fichier: " << filename << std::endl;
+    outFile.close();
+  }
+
+  void loadFromFile(const std::string &filename)
+  {
+    std::ifstream inFile(filename);
+    if (!inFile)
+    {
+      std::cerr << "Erreur lors de l'ouverture du fichier pour le chargement: " << filename << std::endl;
+      return;
+    }
+    inFile >> nb;
+    for (int i = 0; i < 8; ++i)
+    {
+      for (int j = 0; j < 8; ++j)
+      {
+        for (int k = 0; k < 8; ++k)
+        {
+          inFile >> data[i][j][k];
+        }
+      }
+    }
+    inFile.close();
   }
 };
 
@@ -297,6 +344,28 @@ int main(int argc, char **argv)
       }
 
       cout << "Histogrammes du fond calculés" << endl;
+
+      col_hists[0].saveToFile("fond_distribution.txt");
+    }
+    if (c == 'l') // Touche pour charger les distributions sauvegardées
+    {
+      col_hists.clear();
+      col_hists_object.clear();
+      ColorDistribution cd;
+
+      // Charger la distribution de fond
+      cd.loadFromFile("saveDistrib/fond_distribution.txt");
+      col_hists.push_back(cd);
+
+      // Charger les distributions d'objets
+      cd.loadFromFile("saveDistrib/objet_distribution_1.txt");
+      col_hists_object.push_back(cd);
+
+      all_col_hists.clear();
+      all_col_hists.push_back(col_hists);
+      all_col_hists.push_back(col_hists_object);
+
+      cout << "Distributions chargées depuis les fichiers." << endl;
     }
     if (c == 'a' && !col_hists.empty()) // Touche pour ajouter un objet
     {
@@ -318,7 +387,9 @@ int main(int argc, char **argv)
         col_hists_object.clear(); // On vide l'histogramme précédent
         col_hists_object.push_back(cd);
         all_col_hists.push_back(col_hists_object);
-        cout << "Nouvel objet ajouté. Nombre total d'objets : " << all_col_hists.size() << endl;
+        cout << "Nouvel objet ajouté. Nombre total d'objets : " << all_col_hists.size() - 1 << endl;
+        int nbFiles = 1;
+        cd.saveToFile("objet_distribution_" + std::to_string(nbFiles) + ".txt");
       }
     }
     Mat output = img_input;
