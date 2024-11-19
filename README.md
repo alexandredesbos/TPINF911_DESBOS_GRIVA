@@ -96,6 +96,8 @@ Afin d'améliorer la reconnaissance des objets et avoir un meilleur suivi en tem
 
 Pour améliorer la reconnaissance des objets, on a ajouté des marqueurs watershed pour délimiter les objets. Cela permet de mieux les identifier et de les suivre. On calcul les marqueurs et on les affiches dans une image à part.
 
+Il faudrait ensuite ajouter ces marqueurs dans la fonction de reconnaissance pour améliorer la détection des objets.
+
 <table>
   <tr>
     <td> Reconnaissance / marqueur watershed </td>
