@@ -136,15 +136,38 @@ float minDistance(const ColorDistribution &h,
 Mat recoObject(Mat input,
                const std::vector<std::vector<ColorDistribution>> &all_col_hists,
                const std::vector<Vec3b> &colors,
-               const int bloc)
+               const int bloc,
+               const Mat &flow,
+               bool hasPrevFrame)
 {
   Mat output = input.clone();
   for (int y = 0; y <= input.rows - bloc; y += bloc)
   {
     for (int x = 0; x <= input.cols - bloc; x += bloc)
     {
-      // Histogramme de la couleur du bloc actuel
-      ColorDistribution cd = getColorDistribution(input, Point(x, y), Point(x + bloc, y + bloc));
+
+      // On calcul le bloc ajusté par le flot optique
+      Point adjustedPt1 = Point(x, y);
+      Point adjustedPt2 = Point(x + bloc, y + bloc);
+
+      if (hasPrevFrame)
+      {
+        // On ajuste les points de départ et de fin à l'aide du flot optique
+        const Point2f &flowAtPt1 = flow.at<Point2f>(y + bloc / 2, x + bloc / 2);
+        adjustedPt1.x += flowAtPt1.x;
+        adjustedPt1.y += flowAtPt1.y;
+        adjustedPt2.x += flowAtPt1.x;
+        adjustedPt2.y += flowAtPt1.y;
+
+        // On vérifie que les points sont bien dans l'image
+        adjustedPt1.x = std::max(0, std::min(adjustedPt1.x, input.cols - bloc));
+        adjustedPt1.y = std::max(0, std::min(adjustedPt1.y, input.rows - bloc));
+        adjustedPt2.x = std::max(0, std::min(adjustedPt2.x, input.cols - bloc));
+        adjustedPt2.y = std::max(0, std::min(adjustedPt2.y, input.rows - bloc));
+      }
+
+      // On calcul la distribution de couleur du bloc ajusté
+      ColorDistribution cd = getColorDistribution(input, adjustedPt1, adjustedPt2);
 
       // On determine la distance minimale parmi toutes les catégories (fond + objets)
       float minDist = std::numeric_limits<float>::max();
@@ -366,6 +389,8 @@ int main(int argc, char **argv)
   imshow("input", img_input);
   bool freeze = false;
   bool reco = false;
+  Mat prevFrameGray;
+  bool hasPrevFrame = false;
   while (true)
   {
     char c = (char)waitKey(50); // attend 50ms -> 20 images/s
@@ -493,25 +518,56 @@ int main(int argc, char **argv)
       }
     }
     Mat output = img_input;
-    if (reco)
+    Mat currFrameGray;
+    cvtColor(img_input, currFrameGray, COLOR_BGR2GRAY);
+    if (hasPrevFrame)
     {
-      const std::vector<Vec3b> colors = {Vec3b(0, 0, 0), Vec3b(0, 0, 255), Vec3b(0, 255, 0), Vec3b(255, 0, 0), Vec3b(0, 255, 255)};
+      // On calcule le flot optique
+      Mat flow;
+      calcOpticalFlowFarneback(prevFrameGray, currFrameGray, flow, 0.5, 3, 15, 3, 5, 1.2, 0);
 
-      Mat gray;
-      cvtColor(img_input, gray, COLOR_BGR2GRAY);
-      Mat reco = recoObject(img_input, all_col_hists, colors, 16);
+      // Créez une copie de l'image pour afficher le flot optique
+      Mat flowVis = img_input.clone();
 
-      // On applique la relaxation des labels
-      Mat relaxedReco = relaxLabels(reco, 16);
+      // Affichage des vecteurs de déplacement
+      for (int y = 0; y < flow.rows; y += 10)
+      {
+        for (int x = 0; x < flow.cols; x += 10)
+        {
+          Point2f flow_at_point = flow.at<Point2f>(y, x);
+          Point start = Point(x, y);
+          Point end = Point(cvRound(x + flow_at_point.x), cvRound(y + flow_at_point.y));
+          line(flowVis, start, end, Scalar(0, 255, 0));
+          circle(flowVis, start, 2, Scalar(0, 0, 255), -1);
+        }
+      }
+      imshow("Flot optique", flowVis);
+      if (reco)
+      {
+        const std::vector<Vec3b> colors = {Vec3b(0, 0, 0), Vec3b(0, 0, 255), Vec3b(0, 255, 0), Vec3b(255, 0, 0), Vec3b(0, 255, 255)};
 
-      cvtColor(gray, img_input, COLOR_GRAY2BGR);
-      output = 0.5 * relaxedReco + 0.5 * img_input; // mélange reco + caméra
+        Mat gray;
+        cvtColor(img_input, gray, COLOR_BGR2GRAY);
+        Mat reco = recoObject(img_input, all_col_hists, colors, 16, flow, hasPrevFrame);
+
+        // On applique la relaxation des labels
+        Mat relaxedReco = relaxLabels(reco, 16);
+
+        cvtColor(gray, img_input, COLOR_GRAY2BGR);
+        output = 0.5 * relaxedReco + 0.5 * img_input; // mélange reco + caméra
+      }
+      else
+      {
+        cv::rectangle(img_input, pt1, pt2, Scalar({255.0, 255.0, 255.0}), 1);
+      }
     }
     else
     {
       cv::rectangle(img_input, pt1, pt2, Scalar({255.0, 255.0, 255.0}), 1);
     }
     imshow("input", output); // affiche le flux video
+    prevFrameGray = currFrameGray;
+    hasPrevFrame = true;
   }
   return 0;
 }
