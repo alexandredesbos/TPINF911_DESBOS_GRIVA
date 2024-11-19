@@ -231,17 +231,18 @@ void onTrackbarChange(int value, void *)
 
 Mat generateWatershedMarkers(const Mat &input, const std::vector<std::vector<ColorDistribution>> &all_col_hists, const std::vector<Vec3b> &colors, const int bloc)
 {
-    Mat markers(input.size(), CV_32S, Scalar::all(0)); // Matrice de marqueurs pour l'algorithme de watershed
+    Mat smoothedInput;
+    GaussianBlur(input, smoothedInput, Size(5, 5), 0);
+  
+    Mat markers(input.size(), CV_32S, Scalar::all(0));
     int label = 1;
 
     for (int y = 0; y <= input.rows - bloc; y += bloc)
     {
         for (int x = 0; x <= input.cols - bloc; x += bloc)
         {
-            // Histogramme de la couleur du bloc actuel
             ColorDistribution cd = getColorDistribution(input, Point(x, y), Point(x + bloc, y + bloc));
 
-            // Catégorie la plus proche
             float minDist = std::numeric_limits<float>::max();
             int closestCategory = 0;
 
@@ -252,36 +253,27 @@ Mat generateWatershedMarkers(const Mat &input, const std::vector<std::vector<Col
                 {
                     minDist = dist;
                     closestCategory = i;
+
+                    if (minDist < 0.2f)
+                    {
+                        break;
+                    }
                 }
             }
 
-            // Marquer la zone si elle est un objet (pas un bloc de fond)
             if (closestCategory != 0)
             {
-                // Marquer tous les pixels du bloc avec le même label
-                for (int i = y; i < y + bloc && i < markers.rows; ++i)
-                {
-                    for (int j = x; j < x + bloc && j < markers.cols; ++j)
-                    {
-                        markers.at<int>(i, j) = label;
-                    }
-                }
+                // Marquage rapide du bloc entier
+                Rect blockRect(x, y, bloc, bloc);
+                blockRect &= Rect(0, 0, markers.cols, markers.rows);
+                markers(blockRect).setTo(label);
                 label++;
             }
         }
     }
 
-    // Étiqueter le fond comme -1
-    for (int y = 0; y < markers.rows; ++y)
-    {
-        for (int x = 0; x < markers.cols; ++x)
-        {
-            if (markers.at<int>(y, x) == 0)
-            {
-                markers.at<int>(y, x) = -1;
-            }
-        }
-    }
+    // Marquer tous les pixels non étiquetés comme fond (-1)
+    markers.setTo(-1, markers == 0);
 
     return markers;
 }
