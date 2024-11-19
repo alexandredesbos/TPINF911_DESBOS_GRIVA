@@ -306,6 +306,8 @@ void onTrackbarChange(int value, void *)
 
 Mat generateWatershedMarkers(const Mat &input, const std::vector<std::vector<ColorDistribution>> &all_col_hists, const std::vector<Vec3b> &colors, const int bloc)
 {
+
+    // On ajoute un flou pour lisser les couleurs des objets
     Mat smoothedInput;
     GaussianBlur(input, smoothedInput, Size(5, 5), 0);
   
@@ -338,7 +340,6 @@ Mat generateWatershedMarkers(const Mat &input, const std::vector<std::vector<Col
 
             if (closestCategory != 0)
             {
-                // Marquage rapide du bloc entier
                 Rect blockRect(x, y, bloc, bloc);
                 blockRect &= Rect(0, 0, markers.cols, markers.rows);
                 markers(blockRect).setTo(label);
@@ -347,7 +348,6 @@ Mat generateWatershedMarkers(const Mat &input, const std::vector<std::vector<Col
         }
     }
 
-    // Marquer tous les pixels non étiquetés comme fond (-1)
     markers.setTo(-1, markers == 0);
 
   return markers;
@@ -362,7 +362,7 @@ int main(int argc, char **argv)
   const int size = 50;
   const int bbloc = 128;
   // Ouvre la camera
-  pCap = new VideoCapture(1);
+  pCap = new VideoCapture(0);
   if (!pCap->isOpened())
   {
     cout << "Couldn't open image / camera ";

@@ -90,3 +90,24 @@ Cela permet de lisser les résultats en changeant les labels des pixels qui ne s
 ### Amélioration de la reconnaissance
 
 Afin d'améliorer la reconnaissance des objets et avoir un meilleur suivi en temps réel lorsque l'objet bouge, nous avons exploité la cohérence temporelle des objets. Pour cela on a mis en place un flot optique. Il permet de mesurer le déplacement des pixels d'une image à une autre. On récupère donc les déplacements et on peut ensuite ajuster les blocs en conséquence pour améliorer la robustesse de la reconnaissance.
+
+
+### Ajout des marqueurs waterhsed
+
+Pour améliorer la reconnaissance des objets, on a ajouté des marqueurs watershed pour délimiter les objets. Cela permet de mieux les identifier et de les suivre. On calcul les marqueurs et on les affiches dans une image à part.
+
+<table>
+  <tr>
+    <td> Reconnaissance / marqueur watershed </td>
+  </tr>
+  <tr>
+    <td><img src="images/watershedMarkers.png" width=auto height=auto></td>
+  </tr>
+ </table>
+
+
+### Ajout de la sauvagarde des objets
+
+On peut sauvegarder le fond et un objet, puis les charger pour les comparer les optimisations. On ne peut sauvegarder qu'un seul objet à la fois pour l'instant (On charge les histogrammes avec la touche 'l'.).
+Pour sauvegarder, on utilise des fichier .txt dans lesquels on stocke les histogrammes des objets.
+
