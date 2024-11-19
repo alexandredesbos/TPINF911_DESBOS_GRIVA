@@ -8,6 +8,7 @@
 #include <opencv2/opencv.hpp>
 #include <map>
 #include <fstream>
+#include <cmath>
 
 using namespace cv;
 using namespace std;
@@ -59,53 +60,51 @@ struct ColorDistribution
     return dist;
   }
 
-
   void saveToFile(const std::string &filename) const
   {
-      std::ofstream outFile("saveDistrib/" + filename);
-      if (!outFile)
+    std::ofstream outFile("saveDistrib/" + filename);
+    if (!outFile)
+    {
+      std::cerr << "Erreur lors de l'ouverture du fichier pour la sauvegarde: " << filename << std::endl;
+      return;
+    }
+    outFile << nb << "\n";
+    for (int i = 0; i < 8; ++i)
+    {
+      for (int j = 0; j < 8; ++j)
       {
-          std::cerr << "Erreur lors de l'ouverture du fichier pour la sauvegarde: " << filename << std::endl;
-          return;
+        for (int k = 0; k < 8; ++k)
+        {
+          outFile << data[i][j][k] << " ";
+        }
+        outFile << "\n";
       }
-      outFile << nb << "\n";
-      for (int i = 0; i < 8; ++i)
-      {
-          for (int j = 0; j < 8; ++j)
-          {
-              for (int k = 0; k < 8; ++k)
-              {
-                  outFile << data[i][j][k] << " ";
-              }
-              outFile << "\n";
-          }
-      }
-      std::cout << "Histogramme sauvegardé dans le fichier: " << filename << std::endl;
-      outFile.close();
+    }
+    std::cout << "Histogramme sauvegardé dans le fichier: " << filename << std::endl;
+    outFile.close();
   }
 
   void loadFromFile(const std::string &filename)
   {
-      std::ifstream inFile(filename);
-      if (!inFile)
+    std::ifstream inFile(filename);
+    if (!inFile)
+    {
+      std::cerr << "Erreur lors de l'ouverture du fichier pour le chargement: " << filename << std::endl;
+      return;
+    }
+    inFile >> nb;
+    for (int i = 0; i < 8; ++i)
+    {
+      for (int j = 0; j < 8; ++j)
       {
-          std::cerr << "Erreur lors de l'ouverture du fichier pour le chargement: " << filename << std::endl;
-          return;
+        for (int k = 0; k < 8; ++k)
+        {
+          inFile >> data[i][j][k];
+        }
       }
-      inFile >> nb;
-      for (int i = 0; i < 8; ++i)
-      {
-          for (int j = 0; j < 8; ++j)
-          {
-              for (int k = 0; k < 8; ++k)
-              {
-                  inFile >> data[i][j][k];
-              }
-          }
-      }
-      inFile.close();
+    }
+    inFile.close();
   }
-
 };
 
 ColorDistribution
@@ -137,15 +136,38 @@ float minDistance(const ColorDistribution &h,
 Mat recoObject(Mat input,
                const std::vector<std::vector<ColorDistribution>> &all_col_hists,
                const std::vector<Vec3b> &colors,
-               const int bloc)
+               const int bloc,
+               const Mat &flow,
+               bool hasPrevFrame)
 {
   Mat output = input.clone();
   for (int y = 0; y <= input.rows - bloc; y += bloc)
   {
     for (int x = 0; x <= input.cols - bloc; x += bloc)
     {
-      // Histogramme de la couleur du bloc actuel
-      ColorDistribution cd = getColorDistribution(input, Point(x, y), Point(x + bloc, y + bloc));
+
+      // On calcul le bloc ajusté par le flot optique
+      Point adjustedPt1 = Point(x, y);
+      Point adjustedPt2 = Point(x + bloc, y + bloc);
+
+      if (hasPrevFrame)
+      {
+        // On ajuste les points de départ et de fin à l'aide du flot optique
+        const Point2f &flowAtPt1 = flow.at<Point2f>(y + bloc / 2, x + bloc / 2);
+        adjustedPt1.x += flowAtPt1.x;
+        adjustedPt1.y += flowAtPt1.y;
+        adjustedPt2.x += flowAtPt1.x;
+        adjustedPt2.y += flowAtPt1.y;
+
+        // On vérifie que les points sont bien dans l'image
+        adjustedPt1.x = std::max(0, std::min(adjustedPt1.x, input.cols - bloc));
+        adjustedPt1.y = std::max(0, std::min(adjustedPt1.y, input.rows - bloc));
+        adjustedPt2.x = std::max(0, std::min(adjustedPt2.x, input.cols - bloc));
+        adjustedPt2.y = std::max(0, std::min(adjustedPt2.y, input.rows - bloc));
+      }
+
+      // On calcul la distribution de couleur du bloc ajusté
+      ColorDistribution cd = getColorDistribution(input, adjustedPt1, adjustedPt2);
 
       // On determine la distance minimale parmi toutes les catégories (fond + objets)
       float minDist = std::numeric_limits<float>::max();
@@ -219,6 +241,59 @@ Mat relaxLabels(const Mat &labels, int bloc)
   return relaxedLabels;
 }
 
+// Fonction pour calculer la distance de Battacharrya
+double distanceBhattacharyya(const cv::Mat &m1, const cv::Mat &p1, const cv::Mat &m2, const cv::Mat &p2)
+{
+  // On a m1 et m2 les moyennes et p1 et p2 les matrices de covariance des deux distributions
+
+  cv::Mat meanDiff = m1 - m2;
+  cv::Mat covarSum = p1 + p2;
+
+  cv::Mat invCovarSum;
+  double detCovarSum = cv::determinant(covarSum);
+  // On vérifie que la matrice est inversible
+  if (cv::invert(covarSum, invCovarSum) == 0)
+  {
+    return std::numeric_limits<double>::max();
+  }
+
+  cv::Mat term = meanDiff.t() * invCovarSum * meanDiff;
+  double value1 = 0.125 * term.at<double>(0, 0);
+  double value2 = 0.5 * cv::log(detCovarSum / (cv::determinant(p1) * cv::determinant(p2)));
+
+  return value1 + value2;
+}
+
+// Fonction pour tranformer un histogramme en une distribution multivariée
+void histogramToMultivarie(const cv::Mat &histogram, cv::Mat &m, cv::Mat &p)
+{
+  cv::calcCovarMatrix(histogram, p, m, cv::COVAR_NORMAL | cv::COVAR_ROWS, CV_64F);
+  p = p / histogram.rows;
+}
+
+// Fonction recoObject améliorée avec la distance de Battacharrya
+Mat recoObjectBattacharyya(Mat input,
+                           const std::vector<std::vector<ColorDistribution>> &all_col_hists,
+                           const std::vector<Vec3b> &colors,
+                           const int bloc)
+{
+  Mat output = input.clone();
+  for (int y = 0; y <= input.rows - bloc; y += bloc)
+  {
+    for (int x = 0; x <= input.cols - bloc; x += bloc)
+    {
+      // Histogramme de la couleur du bloc actuel
+      ColorDistribution cd = getColorDistribution(input, Point(x, y), Point(x + bloc, y + bloc));
+
+      // On transforme l'histogramme en distribution multivariée
+      cv::Mat hist(1, 512, CV_64F, cd.data);
+      cv::Mat m, p;
+      histogramToMultivarie(hist, m, p);
+    }
+  }
+  return output;
+}
+
 std::vector<ColorDistribution> col_hists;                  // histogrammes du fond
 std::vector<ColorDistribution> col_hists_object;           // histogrammes de l'objet
 std::vector<std::vector<ColorDistribution>> all_col_hists; // tableau de tableau d'histogrammes
@@ -275,7 +350,7 @@ Mat generateWatershedMarkers(const Mat &input, const std::vector<std::vector<Col
     // Marquer tous les pixels non étiquetés comme fond (-1)
     markers.setTo(-1, markers == 0);
 
-    return markers;
+  return markers;
 }
 
 int main(int argc, char **argv)
@@ -287,7 +362,7 @@ int main(int argc, char **argv)
   const int size = 50;
   const int bbloc = 128;
   // Ouvre la camera
-  pCap = new VideoCapture(0);
+  pCap = new VideoCapture(1);
   if (!pCap->isOpened())
   {
     cout << "Couldn't open image / camera ";
@@ -306,6 +381,8 @@ int main(int argc, char **argv)
   imshow("input", img_input);
   bool freeze = false;
   bool reco = false;
+  Mat prevFrameGray;
+  bool hasPrevFrame = false;
   while (true)
   {
     char c = (char)waitKey(50); // attend 50ms -> 20 images/s
@@ -353,27 +430,26 @@ int main(int argc, char **argv)
       cout << "Histogrammes du fond calculés" << endl;
 
       col_hists[0].saveToFile("fond_distribution.txt");
-
     }
     if (c == 'l') // Touche pour charger les distributions sauvegardées
     {
-        col_hists.clear();
-        col_hists_object.clear();
-        ColorDistribution cd;
+      col_hists.clear();
+      col_hists_object.clear();
+      ColorDistribution cd;
 
-        // Charger la distribution de fond
-        cd.loadFromFile("saveDistrib/fond_distribution.txt");
-        col_hists.push_back(cd);
+      // Charger la distribution de fond
+      cd.loadFromFile("saveDistrib/fond_distribution.txt");
+      col_hists.push_back(cd);
 
-        // Charger les distributions d'objets
-        cd.loadFromFile("saveDistrib/objet_distribution_1.txt");
-        col_hists_object.push_back(cd);
+      // Charger les distributions d'objets
+      cd.loadFromFile("saveDistrib/objet_distribution_1.txt");
+      col_hists_object.push_back(cd);
 
-        all_col_hists.clear();
-        all_col_hists.push_back(col_hists);
-        all_col_hists.push_back(col_hists_object);
+      all_col_hists.clear();
+      all_col_hists.push_back(col_hists);
+      all_col_hists.push_back(col_hists_object);
 
-        cout << "Distributions chargées depuis les fichiers." << endl;
+      cout << "Distributions chargées depuis les fichiers." << endl;
     }
     if (c == 'a' && !col_hists.empty()) // Touche pour ajouter un objet
     {
@@ -416,7 +492,7 @@ int main(int argc, char **argv)
 
     // On calcul les valeurs moyennes des histogrammes pour vérifier que tout est correct
     if (c == 'm')
-    {    
+    {
       for (int i = 0; i < all_col_hists.size(); ++i)
       {
         float sum = 0;
@@ -432,28 +508,57 @@ int main(int argc, char **argv)
         }
         cout << "Moyenne de l'histogramme " << i << " : " << sum / 512 << endl;
       }
-
     }
     Mat output = img_input;
-    if (reco)
+    Mat currFrameGray;
+    cvtColor(img_input, currFrameGray, COLOR_BGR2GRAY);
+    if (hasPrevFrame)
     {
-      const std::vector<Vec3b> colors = {Vec3b(0, 0, 0), Vec3b(0, 0, 255), Vec3b(0, 255, 0), Vec3b(255, 0, 0), Vec3b(0, 255, 255)};
+      // Ici on va calculer le flot optique et le visualiser sur l'image dans une nouvelle fenêtre
+      Mat flow;
+      calcOpticalFlowFarneback(prevFrameGray, currFrameGray, flow, 0.5, 3, 15, 3, 5, 1.2, 0);
 
-      Mat gray;
-      cvtColor(img_input, gray, COLOR_BGR2GRAY);
-      Mat reco = recoObject(img_input, all_col_hists, colors, 16);
+      Mat flowVis = img_input.clone();
 
-      // On applique la relaxation des labels
-      Mat relaxedReco = relaxLabels(reco, 16);
+      // On affiche les vecteurs de déplacement du flot optique
+      for (int y = 0; y < flow.rows; y += 10)
+      {
+        for (int x = 0; x < flow.cols; x += 10)
+        {
+          Point2f flow_at_point = flow.at<Point2f>(y, x);
+          Point start = Point(x, y);
+          Point end = Point(cvRound(x + flow_at_point.x), cvRound(y + flow_at_point.y));
+          line(flowVis, start, end, Scalar(0, 255, 0));
+          circle(flowVis, start, 2, Scalar(0, 0, 255), -1);
+        }
+      }
+      imshow("Flot optique", flowVis);
+      if (reco)
+      {
+        const std::vector<Vec3b> colors = {Vec3b(0, 0, 0), Vec3b(0, 0, 255), Vec3b(0, 255, 0), Vec3b(255, 0, 0), Vec3b(0, 255, 255)};
 
-      cvtColor(gray, img_input, COLOR_GRAY2BGR);
-      output = 0.5 * relaxedReco + 0.5 * img_input; // mélange reco + caméra
+        Mat gray;
+        cvtColor(img_input, gray, COLOR_BGR2GRAY);
+        Mat reco = recoObject(img_input, all_col_hists, colors, 16, flow, hasPrevFrame);
+
+        // On applique la relaxation des labels
+        Mat relaxedReco = relaxLabels(reco, 16);
+
+        cvtColor(gray, img_input, COLOR_GRAY2BGR);
+        output = 0.5 * relaxedReco + 0.5 * img_input; // mélange reco + caméra
+      }
+      else
+      {
+        cv::rectangle(img_input, pt1, pt2, Scalar({255.0, 255.0, 255.0}), 1);
+      }
     }
     else
     {
       cv::rectangle(img_input, pt1, pt2, Scalar({255.0, 255.0, 255.0}), 1);
     }
     imshow("input", output); // affiche le flux video
+    prevFrameGray = currFrameGray;
+    hasPrevFrame = true;
   }
   return 0;
 }
