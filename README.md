@@ -69,7 +69,7 @@ Afin d'otimiser le programme, on a ajouté un seuil pour la distance entre les h
   </tr>
  </table>
 
-### relaxation des labels
+### Relaxation des labels
 
 Afin d'avoir une meilleure analyse des couleurs, on a appliqué une relaxation des labels trouvés en utilisant un voisinnage 3x3.
 Cela permet de lisser les résultats en changeant les labels des pixels qui ne sont pas dans la majorité des voisins.
@@ -84,3 +84,9 @@ Cela permet de lisser les résultats en changeant les labels des pixels qui ne s
     <td><img src="images/apres.png" width=auto height=auto></td>
   </tr>
  </table>
+
+## CMI
+
+### Amélioration de la reconnaissance
+
+Afin d'améliorer la reconnaissance des objets et avoir un meilleur suivi en temps réel lorsque l'objet bouge, nous avons exploité la cohérence temporelle des objets. Pour cela on a mis en place un flot optique. Il permet de mesurer le déplacement des pixels d'une image à une autre. On récupère donc les déplacements et on peut ensuite ajuster les blocs en conséquence pour améliorer la robustesse de la reconnaissance.
