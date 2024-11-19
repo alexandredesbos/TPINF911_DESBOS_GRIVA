@@ -286,9 +286,41 @@ Mat recoObjectBattacharyya(Mat input,
       ColorDistribution cd = getColorDistribution(input, Point(x, y), Point(x + bloc, y + bloc));
 
       // On transforme l'histogramme en distribution multivariée
-      cv::Mat hist(1, 512, CV_64F, cd.data);
-      cv::Mat m, p;
-      histogramToMultivarie(hist, m, p);
+      cv::Mat hist1(1, 512, CV_64F, cd.data);
+      cv::Mat m1, p1;
+      histogramToMultivarie(hist1, m1, p1);
+
+      // On determine la distance minimale parmi toutes les catégories (fond + objets)
+      float minDist = std::numeric_limits<float>::max();
+      int closestCategory = 0; // On défini 0 pour le fond, 1 pour le premier objet...
+
+      for (int i = 0; i < all_col_hists.size(); ++i)
+      {
+        for (const auto &h : all_col_hists[i])
+        {
+          cv::Mat hist2(1, 512, CV_64F, const_cast<float *>(h.data[0][0]));
+          cv::Mat m2, p2;
+          histogramToMultivarie(hist2, m2, p2);
+
+          float dist = distanceBhattacharyya(m1, p1, m2, p2);
+          if (dist < minDist)
+          {
+            minDist = dist;
+            closestCategory = i;
+          }
+        }
+      }
+
+      // On colore le bloc courant selon la catégorie la plus proche
+      Vec3b color = colors[closestCategory];
+
+      for (int i = 0; i < bloc; ++i)
+      {
+        for (int j = 0; j < bloc; ++j)
+        {
+          output.at<Vec3b>(y + i, x + j) = color;
+        }
+      }
     }
   }
   return output;
@@ -306,51 +338,66 @@ void onTrackbarChange(int value, void *)
 
 Mat generateWatershedMarkers(const Mat &input, const std::vector<std::vector<ColorDistribution>> &all_col_hists, const std::vector<Vec3b> &colors, const int bloc)
 {
+  Mat smoothedInput;
+  GaussianBlur(input, smoothedInput, Size(5, 5), 0);
 
-    // On ajoute un flou pour lisser les couleurs des objets
-    Mat smoothedInput;
-    GaussianBlur(input, smoothedInput, Size(5, 5), 0);
-  
-    Mat markers(input.size(), CV_32S, Scalar::all(0));
-    int label = 1;
+  Mat markers(input.size(), CV_32S, Scalar::all(0));
+  int label = 1;
 
-    for (int y = 0; y <= input.rows - bloc; y += bloc)
+  // On ajoute un flou pour lisser les couleurs des objets
+  Mat smoothedInput;
+  GaussianBlur(input, smoothedInput, Size(5, 5), 0);
+
+  Mat markers(input.size(), CV_32S, Scalar::all(0));
+  int label = 1;
+
+  for (int y = 0; y <= input.rows - bloc; y += bloc)
+  {
+    for (int x = 0; x <= input.cols - bloc; x += bloc)
     {
-        for (int x = 0; x <= input.cols - bloc; x += bloc)
+      ColorDistribution cd = getColorDistribution(input, Point(x, y), Point(x + bloc, y + bloc));
+
+      float minDist = std::numeric_limits<float>::max();
+      int closestCategory = 0;
+
+      for (int i = 0; i < all_col_hists.size(); ++i)
+      {
+        float dist = minDistance(cd, all_col_hists[i]);
+        if (dist < minDist)
         {
-            ColorDistribution cd = getColorDistribution(input, Point(x, y), Point(x + bloc, y + bloc));
+          minDist = dist;
+          closestCategory = i;
 
-            float minDist = std::numeric_limits<float>::max();
-            int closestCategory = 0;
-
-            for (int i = 0; i < all_col_hists.size(); ++i)
-            {
-                float dist = minDistance(cd, all_col_hists[i]);
-                if (dist < minDist)
-                {
-                    minDist = dist;
-                    closestCategory = i;
-
-                    if (minDist < 0.2f)
-                    {
-                        break;
-                    }
-                }
-            }
-
-            if (closestCategory != 0)
-            {
-                Rect blockRect(x, y, bloc, bloc);
-                blockRect &= Rect(0, 0, markers.cols, markers.rows);
-                markers(blockRect).setTo(label);
-                label++;
-            }
+          if (minDist < 0.2f)
+          {
+            break;
+          }
         }
+      }
+
+      if (closestCategory != 0)
+      {
+        // Marquage rapide du bloc entier
+        Rect blockRect(x, y, bloc, bloc);
+        blockRect &= Rect(0, 0, markers.cols, markers.rows);
+        markers(blockRect).setTo(label);
+        label++;
+      }
     }
+  }
+  if (closestCategory != 0)
+  {
+    Rect blockRect(x, y, bloc, bloc);
+    blockRect &= Rect(0, 0, markers.cols, markers.rows);
+    markers(blockRect).setTo(label);
+    label++;
+  }
+}
+}
 
-    markers.setTo(-1, markers == 0);
+markers.setTo(-1, markers == 0);
 
-  return markers;
+return markers;
 }
 
 int main(int argc, char **argv)
