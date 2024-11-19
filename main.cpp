@@ -522,14 +522,13 @@ int main(int argc, char **argv)
     cvtColor(img_input, currFrameGray, COLOR_BGR2GRAY);
     if (hasPrevFrame)
     {
-      // On calcule le flot optique
+      // Ici on va calculer le flot optique et le visualiser sur l'image dans une nouvelle fenêtre
       Mat flow;
       calcOpticalFlowFarneback(prevFrameGray, currFrameGray, flow, 0.5, 3, 15, 3, 5, 1.2, 0);
 
-      // Créez une copie de l'image pour afficher le flot optique
       Mat flowVis = img_input.clone();
 
-      // Affichage des vecteurs de déplacement
+      // On affiche les vecteurs de déplacement du flot optique
       for (int y = 0; y < flow.rows; y += 10)
       {
         for (int x = 0; x < flow.cols; x += 10)
